@@ -12,6 +12,8 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
 	PROMPT6 DB 0DH,0AH,'Sorry you missed.',0DH,0AH, '$'
 	PROMPT7 DB 0DH,0AH,'Sorry, duplicate entry.  Please try again.',0DH,0AH, '$'
 	PROMPT8 DB 0DH,0AH,'List of chosen letter(s): ', '$'
+	CURRENTHIGH DB 0DH,0AH,'Score to beat: ', '$'
+	CURRENTSCORE DB 0DH,0AH,'Your score: ', '$'
 	CRLF   DB  0DH, 0AH, '$'
 	NEWLINE DB 10,13,'$'
 	
@@ -45,8 +47,12 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
 	STR_L	  DB ?
 	;MSG  DB ?,'$'
 	MSG DB 32 DUP('$') 
+	RES  DB 10 DUP ('$')
 	
 	COUNT DW ?
+	SCORE DW ?
+	HIGHSCORE DW ?
+	MODE DB 1 ;-------NORMAL OR EXTREME MODE-------;
 	
 	
   
@@ -83,14 +89,18 @@ MAIN PROC FAR
   MOV AX, @data
   MOV DS, AX
 	XOR BP,BP
-	LEA SI, RECORD_STR
-	LEA DI, TOBESOLVED
-	MOV BP,SI
+	
+	MOV SCORE,0
 	
   ;MAINGAME:
 ;*************************************************************************
 ;  FILE READING
 ;*************************************************************************
+	LEA SI, RECORD_STR
+	LEA DI, TOBESOLVED
+	MOV BP,SI
+	
+	
   ;open file
   MOV AH, 3DH           ;requst open file
   MOV AL, 00            ;read only; 01 (write only); 10 (read/write)
@@ -109,14 +119,15 @@ MAIN PROC FAR
   CMP AX, 00            ;zero bytes read?
   JE DISPLAY_ERROR3
   
-	
-	
 	CALL GETCOUNT ;gets file string length
 	
 ;*************************************************************************
 ;  LOOP FOR ALL WORDS IN THE FILE
 ;*************************************************************************
-	
+	MOV CREDIT,0		;initialize Credit
+	MOV  correct,0		;initialize values of correct & incorrect
+	MOV  incorrect,0
+	MOV CX,7
 	PLAY:
 	CALL GETLINE ; gets 1 line form file
 	
@@ -197,10 +208,6 @@ GETLINE PROC
 	
 	ENDGET:
 	DEC COUNT
-	;MOV AL,10
-	;MOV [DI],AX
-	;MOV AL,13
-	;MOV [DI],AX
 	MOV AL,'$'
 	MOV [DI],AX
 	INC SI
@@ -219,6 +226,44 @@ RESET PROC
 		RESETS MSG
 		 RET
 RESET ENDP
+
+;*************************************************************************
+;  HEX TO DEC procedure
+;*************************************************************************
+
+HEX2DEC PROC 	
+	PUSH AX
+	PUSH BX
+	PUSH CX
+	PUSH DX
+	PUSH SI
+	LEA SI,RES
+	MOV CX,0
+  MOV BX,10
+   
+LOOP1: MOV DX,0
+       DIV BX
+       ADD DL,30H
+       PUSH DX
+       INC CX
+       CMP AX,9
+       JG LOOP1
+     
+       ADD AL,30H
+       MOV [SI],AL
+     
+LOOP2: POP AX
+       INC SI
+       MOV [SI],AL
+       LOOP LOOP2
+    
+		POP SI
+		POP DX
+		POP CX
+		POP BX
+		POP AX
+		RET
+HEX2DEC ENDP
 
 ;*************************************************************************
 ;  TABLE procedure
@@ -248,9 +293,7 @@ TABLE ENDP
 displayEmpty PROC
 	MOV STR_L,0		;initialize string length
 	MOV BL,'-'
-	MOV AH,9
-	LEA DX,CRLF
-	INT 21H
+	PRINTSTR CRLF
 ;display dash
 	XOR SI,SI		;resets index
 BEGIN:
@@ -263,12 +306,8 @@ BEGIN:
 End_ :
 	MOV TEMP[SI],'$'
 
-	MOV AH,9
-	LEA DX,TEMP
-	INT 21H
-	MOV AH,9
-	LEA DX,CRLF
-	INT 21H
+	PRINTSTR TEMP
+	PRINTSTR CRLF
 
  	RET
 
@@ -277,11 +316,25 @@ displayEmpty ENDP
 ;***************************************************************************
 ;	matchWord Procedure
 ;***************************************************************************
+wins:
+jmp WINCASE
+looses:
+jmp LOOSE
+RESETINC:
+MOV CREDIT,0		;initialize Credit
+MOV  correct,0		;initialize values of correct & incorrect
+MOV  incorrect,0
+MOV CX,7
+JMP CONT
+;RET
 matchWord PROC
-	MOV CREDIT,0		;initialize Credit
-	MOV  correct,0		;initialize values of correct & incorrect
-	MOV  incorrect,0
-	MOV CX,7
+	CMP MODE,2
+	JNE RESETINC
+	CONT:
+	;MOV CREDIT,0		;initialize Credit
+	;MOV  correct,0		;initialize values of correct & incorrect
+	;MOV  incorrect,0
+	;MOV CX,7
 INPUT:	;*********************** user input loop ***************************
 	CMP CX,0
 	JE  looses
@@ -289,9 +342,12 @@ INPUT:	;*********************** user input loop ***************************
 	CMP DL,STR_L
 	JE  wins
 OTHER_INPUT:
-	MOV AH,9	
-	LEA DX,PROMPT3		;asks "What letter do you guess?"
-	INT 21H
+	MOV AX, SCORE
+	CALL HEX2DEC
+	PRINTSTR CURRENTSCORE
+	PRINTSTR RES
+	PRINTSTR CRLF
+	PRINTSTR PROMPT3  ;--------USER INPUT PROMPT---------;
 	MOV AH,1
 	INT 21H
 	MOV BL,AL		;save input to BL
@@ -304,25 +360,17 @@ CHECK_DUP:			;check if there is a duplicate entry
 	INC SI
 	JMP CHECK_DUP
 DUPLICATE:
-	MOV AH,9
-	LEA DX,PROMPT7
-	INT 21H
+	PRINTSTR PROMPT7
 	JMP OTHER_INPUT	
 STORE_INPUT:
 	MOV STACK_INPUT[SI],BL
 	INC SI
 	MOV STACK_INPUT[SI],'$'
 
-	MOV AH,9
-	LEA DX,PROMPT8
-	INT 21H	
-	MOV AH,9
-	LEA DX,STACK_INPUT
-	INT 21H	
+	PRINTSTR PROMPT8
+	PRINTSTR STACK_INPUT
 
-	MOV AH,9
-	LEA DX,PROMPT4
-	INT 21H			;Comment the user's guessing 
+	PRINTSTR PROMPT4  ;Comment the user's guessing 
 	XOR SI,SI		;resets index
 COMPARE:;*********************** compares an char input to a word ***********
 	CMP MSG[SI],'$'
@@ -330,23 +378,17 @@ COMPARE:;*********************** compares an char input to a word ***********
 	CMP BL,MSG[SI]		;input matches any letter of the word?
 	JE GAIN_CORRECT
 	INC SI
-	JMP COMPARE
-wins:
-jmp WINCASE
-looses:
-jmp LOOSE
-	
+	JMP COMPARE	
 
 GAIN_CORRECT:
 	MOV TEMP[SI],BL
 	INC SI
+	INC SCORE ;----player score-----;
 	INC correct
 	INC CREDIT
 	JMP COMPARE
 GETINPUT:
-	MOV AH,9
-	LEA DX,TEMP
-	INT 21H
+	PRINTSTR TEMP
 	CMP CREDIT,0
 	JG  GAIN_SCORE
 	DEC CX
@@ -357,21 +399,24 @@ GAIN_SCORE:
 	MOV CREDIT,0
 	JMP INPUT
 WINCASE:
-	MOV incorrect,8
+	CMP MODE,2
+	JNE NORESETINC
+	;MOV incorrect,8
+	CONT0:
 	CALL DISPLAY
-	MOV AH,9
-	LEA DX,PROMPT5
-	INT 21H
+	PRINTSTR PROMPT5
 	JMP RESULT
 LOOSE:
-	MOV AH,9
-	LEA DX,PROMPT6
-	INT 21H	
+	PRINTSTR PROMPT6	
 RESULT:
 	RET			;return to main
 
 matchWord ENDP
 
+NORESETINC:
+MOV incorrect,8
+JMP CONT0
+;RET
 ;*************************************************************************
 ;	Display (bitmap) procedure
 ;*************************************************************************
