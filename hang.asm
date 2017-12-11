@@ -35,7 +35,7 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
   FILEHANDLE    DW ?
 
 	STACK_INPUT		DB 32 DUP('$') 
-	RECORD_STR    DB 32 DUP('$')  ;length = original length of record + 1 (for $)
+	RECORD_STR    DB 1001 DUP('$')  ;length = original length of record + 1 (for $)
   TOBESOLVED    DB 32 DUP(' ')  ;length = original length of record + 1 (for $)
 	
 	
@@ -120,19 +120,19 @@ MAIN PROC FAR
   JE DISPLAY_ERROR3
   
 	CALL GETCOUNT ;gets file string length
-	
-;*************************************************************************
-;  LOOP FOR ALL WORDS IN THE FILE
-;*************************************************************************
 	MOV CREDIT,0		;initialize Credit
 	MOV  correct,0		;initialize values of correct & incorrect
 	MOV  incorrect,0
 	MOV CX,7
+	
+;*************************************************************************
+;  LOOP FOR ALL WORDS IN THE FILE
+;*************************************************************************
 	PLAY:
 	CALL GETLINE ; gets 1 line form file
 	
   ;display record
-	;PRINTSTR TOBESOLVED
+	PRINTSTR TOBESOLVED
 	
 	CALL TABLE
 	CALL matchWord
