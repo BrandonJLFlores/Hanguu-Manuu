@@ -47,8 +47,7 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
 	MSG DB 32 DUP('$') 
 	
 	COUNT DW ?
-	COUNT2 DB 0
-	TEMPSI DW ?
+	
 	
   
 ;---------------------------------------------
@@ -63,11 +62,21 @@ LEA DX, STRING
 INT 21H
 ENDM
 
-PRINTCH MACRO STRING
-
-MOV AH,2
-MOV DL,AL
-INT 21H
+;*************************************************************************
+;  MACRO FOR CLEARING STRINGS
+;*************************************************************************
+RESETS MACRO STRING 	
+	LOCAL WIPE
+	LOCAL ENDRESET
+	XOR  SI,SI
+WIPE:
+     CMP  STRING[SI], '$'
+		 JE ENDRESET
+     MOV  STRING[SI], '$'
+		 INC  SI
+		 JMP WIPE
+     
+		 ENDRESET:
 ENDM
 
 MAIN PROC FAR
@@ -104,21 +113,26 @@ MAIN PROC FAR
 	
 	CALL GETCOUNT ;gets file string length
 	
-	;PLAY:
+;*************************************************************************
+;  LOOP FOR ALL WORDS IN THE FILE
+;*************************************************************************
+	
+	PLAY:
 	CALL GETLINE ; gets 1 line form file
 	
   ;display record
-		PRINTSTR TOBESOLVED
+	;PRINTSTR TOBESOLVED
 	
 	CALL TABLE
 	CALL matchWord
 	
 	;PRINTSTR NEWLINE
+	CALL RESET
+
+	LEA DI, TOBESOLVED
 	
-	;LEA DI, TOBESOLVED
-	
-	;CMP COUNT,0
-	;JNE PLAY
+	CMP COUNT,0
+	JNE PLAY
 	
 	;close file handle
   MOV AH, 3EH           ;request close file
@@ -152,15 +166,23 @@ EXIT:
   INT 21H
 MAIN ENDP
 
+;*************************************************************************
+;  GETCOUNT procedure
+;*************************************************************************
+
 GETCOUNT PROC
 	MOV CX,AX
 	MOV COUNT,CX
 	RET
 GETCOUNT ENDP
 
+;*************************************************************************
+;  GETLINE procedure
+;*************************************************************************
+
 GETLINE PROC
 	MOV SI,BP
-	MOV TEMPSI, SI
+	;MOV TEMPSI, SI
 
 	ITERATE:
 		MOV AL,[SI]
@@ -175,10 +197,10 @@ GETLINE PROC
 	
 	ENDGET:
 	DEC COUNT
-	MOV AL,10
-	MOV [DI],AX
-	MOV AL,13
-	MOV [DI],AX
+	;MOV AL,10
+	;MOV [DI],AX
+	;MOV AL,13
+	;MOV [DI],AX
 	MOV AL,'$'
 	MOV [DI],AX
 	INC SI
@@ -188,7 +210,18 @@ GETLINE PROC
 GETLINE ENDP
 
 ;*************************************************************************
-;  table procedure
+;  RESET procedure
+;*************************************************************************
+
+RESET PROC 	
+		RESETS STACK_INPUT
+		RESETS TEMP
+		RESETS MSG
+		 RET
+RESET ENDP
+
+;*************************************************************************
+;  TABLE procedure
 ;*************************************************************************
 
 TABLE PROC 	
@@ -200,7 +233,7 @@ COPY0:
 	MOV AL,TOBESOLVED[SI]
 	MOV MSG[SI],AL
 	INC SI
-	LOOP COPY0
+	JMP COPY0
 END0:
 	MOV MSG[SI],'$'
 	;PRINTSTR MSG
@@ -371,70 +404,44 @@ DISPLAY PROC
         CMP incorrect,8
         JE DISP8
 
-        ret
+		
+RET
 
-;display message0
 DISP0:
-        LEA DX,FIG0
-        MOV AH,9
-        INT 21h
-        RET
+	PRINTSTR FIG0
+	RET
 
 DISP1:
-;display message1
-        LEA DX,FIG1
-        MOV AH,9
-        INT 21h
-        RET
+	PRINTSTR FIG1
+	RET
 
 DISP2:
-;display message2
-        LEA DX,FIG2
-        MOV AH,9
-        INT 21h
-        RET
+	PRINTSTR FIG2
+	RET
 
 DISP3:
-;display message3
-        LEA DX,FIG3
-        MOV AH,9
-        INT 21h
-        RET
+	PRINTSTR FIG3
+	RET
 
 DISP4:
-;display message4
-        LEA DX,FIG4
-        MOV AH,9
-        INT 21h
-        RET
+	PRINTSTR FIG4
+	RET
 
 DISP5:
-;display message5
-        LEA DX,FIG5
-        MOV AH,9
-        INT 21h
-        RET
+	PRINTSTR FIG5
+	RET
 
 DISP6:
-;display message6
-        LEA DX,FIG6
-        MOV AH,9
-        INT 21h
-        RET
+	PRINTSTR FIG6
+	RET
 
 DISP7:
-;display message7
-        LEA DX,FIG7
-        MOV AH,9
-        INT 21h
-        RET
+  PRINTSTR FIG7
+  RET
 
 DISP8:
-;display message8
-        LEA DX,FIG8
-        MOV AH,9
-        INT 21h
-        RET
+	PRINTSTR FIG8
+	RET
 
 DISPLAY ENDP
 
