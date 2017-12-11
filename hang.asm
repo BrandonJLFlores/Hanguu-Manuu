@@ -132,7 +132,7 @@ MAIN PROC FAR
 	CALL GETLINE ; gets 1 line form file
 	
   ;display record
-	PRINTSTR TOBESOLVED
+	;PRINTSTR TOBESOLVED
 	
 	CALL TABLE
 	CALL matchWord
