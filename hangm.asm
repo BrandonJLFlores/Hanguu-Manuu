@@ -30,6 +30,8 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
 	ERROR1_STR    DB 'Error in opening file.$'
   ERROR2_STR    DB 'Error reading from file.$'
   ERROR3_STR    DB 'No record read from file.$'
+	ERROR4_STR    DB 'Error writing in file.$'
+  ERROR5_STR    DB 'Record not written properly.$'
 	
 	WORDS  DB 'file.txt', 00H
 	HIGHSCORETXT  DB 'high.txt', 00H
@@ -68,6 +70,7 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
 	LOSE DW ? ;--------IF DEDZ NA BA-----------;
 	TEN DW ?
 	TOT DW ?
+	COUNTER DW ?
 	
 	
   
@@ -120,13 +123,13 @@ MAIN PROC FAR
 	CALL OPEN
 	LEA DX, HIGH_STR
 	CALL READ
-	;CALL STR2HEX
-	;MOV AX,TOT
-	;CALL HEX2DEC
-	;MOV DX,RES
-	;MOV HIGHSCORE,DX
+	CALL STR2HEX
+	MOV AX,TOT
+	CALL HEX2DEC
+	MOV DX,RES
+	MOV HIGHSCORE,DX
 	;PRINTSTR RES
-	
+
 	;PRINTSTR HIGH_STR
 	;CALL STR2HEX
 	;MOV AX,HIGH_STR
@@ -317,6 +320,10 @@ LOOP2: POP AX
        INC SI
        MOV [SI],AL
        LOOP LOOP2
+		
+		INC SI
+		MOV AL,'$'
+		MOV [SI],AL
     
 		POP SI
 		POP DX
@@ -340,7 +347,7 @@ STR2HEX PROC
 	XOR SI,SI
 	XOR AX,AX
 	XOR BX,BX
-	MOV TEN,1
+	MOV TEN,10
 	MOV TOT,0
 	
 	
@@ -359,12 +366,7 @@ STR2HEX PROC
 	SUB AL,30H
 	
 	ADD TOT,AX
-	
-	XOR AX,AX
-	MOV CX,0AH
-	MOV AX, TEN
-	MUL CX
-	MOV TEN,AX
+
 	INC SI
 	JMP LOOP0
 END00:
@@ -526,6 +528,11 @@ LOOSE:
 	MOV LOSE,1
 	PRINTSTR PROMPT6	
 RESULT:
+	CALL GETSIZE
+	MOV AX,TOT
+	CMP SCORE,AX
+	JG WRITE
+	CONTINUE:
 	RET			;return to main
 
 matchWord ENDP
@@ -533,6 +540,72 @@ matchWord ENDP
 NORESETINC:
 MOV incorrect,8
 JMP CONT0
+
+WRITE:
+	MOV AH, 3CH           ;request create file
+  MOV CX, 00            ;normal attribute
+  LEA DX, HIGHSCORETXT  ;load path and file name
+  INT 21H
+  JC DISPLAY_ERROR6     ;if there's error in creating file, carry flag = 1, otherwise 0
+  MOV FILEHANDLE, AX
+
+  ;write file
+  MOV AH, 40H           ;request write record
+  MOV BX, FILEHANDLE    ;file handle
+  MOV CX, COUNTER            ;record length
+  LEA DX, RES    ;address of output area
+  INT 21H
+  JC DISPLAY_ERROR4     ;if carry flag = 1, there's error in writing (nothing is written)
+  CMP AX, COUNTER            ;after writing, set AX to size of chars nga na write
+  JNE DISPLAY_ERROR5  
+  
+  ;close file handle
+  MOV AH, 3EH           ;request close file
+  MOV BX, FILEHANDLE    ;file handle
+  INT 21H
+	JMP CONTINUE
+	
+	DISPLAY_ERROR4:
+	LEA DX, ERROR4_STR
+	MOV AH, 09
+	INT 21H
+	JMP EXIT1
+	
+	DISPLAY_ERROR5:
+	LEA DX, ERROR5_STR
+	MOV AH, 09
+	INT 21H
+	JMP EXIT1
+	
+	DISPLAY_ERROR6:
+	LEA DX, ERROR1_STR
+	MOV AH, 09
+	INT 21H
+	JMP EXIT1
+
+	EXIT1:
+ 	MOV AX, 4C00H
+	INT 21H	
+
+;*************************************************************************
+;	SIZE OF CURRENT SCORE procedure
+;*************************************************************************	
+
+GETSIZE PROC
+	MOV COUNTER,0
+	XOR SI,SI
+COPY10:
+	CMP RES[SI],'$'
+	JE END10
+	INC COUNTER
+	INC SI
+	JMP COPY10
+END10:
+	MOV MSG[SI],'$'
+	
+RET
+GETSIZE ENDP
+
 ;RET
 ;*************************************************************************
 ;	Display (bitmap) procedure
