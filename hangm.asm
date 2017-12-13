@@ -69,8 +69,8 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
 	MODE DB 1 ;-------NORMAL OR EXTREME MODE-------;
 	LOSE DW ? ;--------IF DEDZ NA BA-----------;
 	TEN DW ?
-	TOT DW ?
-	COUNTER DW ?
+	TOT DW ? ;**********TOTAL HIGH***************;
+	COUNTER DW ? ;**********TOTAL CURRENT***************;
 	
 	
   
@@ -147,16 +147,12 @@ MAIN PROC FAR
 	PLAY:
 	CALL GETLINE ; gets 1 line form file
 	
-  ;display record
-	;PRINTSTR TOBESOLVED
 	CMP LOSE,1
 	JE EXIT
 	CALL TABLE
 	CALL matchWord
 	
-	;PRINTSTR NEWLINE
 	CALL RESET
-
 	LEA DI, TOBESOLVED
 	
 	CMP COUNT,0
@@ -234,7 +230,7 @@ READ ENDP
 ;*************************************************************************	
 
 GETCOUNT PROC
-	MOV CX,AX
+	MOV CX,AX			;SIZE OF STRING IS STORED IN AX WHEN USING 3FH
 	MOV COUNT,CX
 	RET
 GETCOUNT ENDP
@@ -244,8 +240,7 @@ GETCOUNT ENDP
 ;*************************************************************************
 
 GETLINE PROC
-	MOV SI,BP
-	;MOV TEMPSI, SI
+	MOV SI,BP			;RESTORES PREVIOUS POSITION OF SI FROM THE ENTIRE STRING FETCHED FROM THE FILE
 
 	ITERATE:
 		MOV AL,[SI]
@@ -384,7 +379,6 @@ COPY0:
 	JMP COPY0
 END0:
 	MOV MSG[SI],'$'
-	;PRINTSTR MSG
   CALL displayEmpty    	 	
 	
 	RET
@@ -416,9 +410,7 @@ End_ :
 
 displayEmpty ENDP
 
-;***************************************************************************
-;	matchWord Procedure
-;***************************************************************************
+
 wins:
 jmp WINCASE
 looses:
@@ -430,14 +422,14 @@ MOV  incorrect,0
 MOV CX,7
 JMP CONT
 ;RET
+;***************************************************************************
+;	matchWord Procedure
+;***************************************************************************
 matchWord PROC
-	CMP MODE,2
+	CMP MODE,2  ;**********comparison if extreme mode is selected or not**************;
 	JNE RESETINC
 	CONT:
-	;MOV CREDIT,0		;initialize Credit
-	;MOV  correct,0		;initialize values of correct & incorrect
-	;MOV  incorrect,0
-	;MOV CX,7
+
 INPUT:	;*********************** user input loop ***************************
 	CMP CX,0
 	JE  looses
@@ -445,10 +437,11 @@ INPUT:	;*********************** user input loop ***************************
 	CMP DL,STR_L
 	JE  wins
 OTHER_INPUT:
+;***************PRINTING OF CURRENT AND HIGH SCORES***************;
 	MOV AX, SCORE
 	CALL HEX2DEC
 	PRINTSTR CURRENTHIGH
-	PRINTSTR HIGH_STR     ;----TODO CONVERT TO HEX-------;
+	PRINTSTR HIGH_STR    ;---------HIGHSCORE----------;
 	;PRINTSTR HIGHSCORE
 	PRINTSTR CURRENTSCORE
 	PRINTSTR RES  ;-----CONVERTED SCORE TO DEC----------;
@@ -599,7 +592,7 @@ GETSIZE ENDP
 
 ;RET
 ;*************************************************************************
-;	Display (bitmap) procedure
+;	Display Hangman procedure
 ;*************************************************************************
 DISPLAY PROC
 ;checking score value and display
