@@ -1,4 +1,4 @@
-# Hanguu-Manuu
+# Hanguu Manuu
 
 ```assembly
        __  __    ___     _   __   ______   __  __   __  __        ._________
@@ -14,7 +14,7 @@
    /_/  /_/   /_/  |_|/_/ |_/   \____/   \____/                       ______|___
 ```   
    
- 
+```assembly 
       .-----------------------------------------------------------------.
      /  .-.                       HOW TO PLAY                       .-.  \
     |  /   \ Mistakenly accused of murder, Mr. Juju was sentenced  /   \  |
@@ -27,7 +27,8 @@
     \       |                                                     |       /
      \     /                                                       \     /
       `---'                                                         `---'
- 	
+```
+
 ###	CONTROLS:
 ####	All characters keys that could possibly complete the hidden word
 	
