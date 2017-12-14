@@ -5,10 +5,33 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
 ;---------------------------------------------
 .DATA
 	TEMP DB 32 DUP('$') 
+	HOWTO_FILE DB 'howto.txt', 00H
+	GAMEOVER_FILE DB 'gameover.txt', 00H
+  ERROR_STR DB "ERROR!$"
+	HOWTO_STR DB 2001 DUP('$')
+	GAMEOVER_STR DB 2001 DUP('$')
 
+	MESSAGE  DB 0ah, 0dh,"       __  __    ___     _   __   ______   __  __   __  __        ._________", 0ah, 0dh    
+					 DB "      / / / /   /   |   / | / /  / ____/  / / / /  / / / /       _|_        |", 0ah, 0dh
+					 DB "     / /_/ /   / /| |  /  |/ /  / / __   / / / /  / / / /       /x x\       |", 0ah, 0dh
+					 DB "    / __  /   / ___ | / /|  /  / /_/ /  / /_/ /  / /_/ /        \___/       |", 0ah, 0dh
+					 DB "   /_/ /_/   /_/  |_|/_/ |_/   \____/   \____/   \____/          /|\        |", 0ah, 0dh
+					 DB "                                                                / | \       |", 0ah, 0dh
+					 DB "       __  ___    ___     _   __   __  __   __  __                -         |", 0ah, 0dh
+					 DB "      /  |/  /   /   |   / | / /  / / / /  / / / /               / \        |", 0ah, 0dh
+					 DB "     / /|_/ /   / /| |  /  |/ /  / / / /  / / / /               /   \       |", 0ah, 0dh
+					 DB "    / /  / /   / ___ | / /|  /  / /_/ /  / /_/ /                            |", 0ah, 0dh
+					 DB "   /_/  /_/   /_/  |_|/_/ |_/   \____/   \____/                       ______|___$", 0ah, 0dh
+	
+	FTXT DB "MAIN MENU$", 0ah, 0dh
+  OPT1 DB " Normal Mode$", 0ah, 0dh
+  OPT2 DB " Extreme Mode$", 0ah, 0dh
+  OPT3 DB " How to Play$", 0ah, 0dh
+  OPT4 DB " Exit$"
+	
 	PROMPT3 DB 0DH,0AH,'What letter do you guess?  ', '$'
 	PROMPT4 DB 0DH,0AH,'The word is:',0DH,0AH, '$'
-	PROMPT5 DB 0DH,0AH,'Congratulations! You won the game',0DH,0AH, '$'
+	PROMPT5 DB 0DH,0AH,'Congratulations! You won the round',0DH,0AH, '$'
 	PROMPT6 DB 0DH,0AH,'Sorry you missed.',0DH,0AH, '$'
 	PROMPT7 DB 0DH,0AH,'Sorry, duplicate entry.  Please try again.',0DH,0AH, '$'
 	PROMPT8 DB 0DH,0AH,'List of chosen letter(s): ', '$'
@@ -33,12 +56,13 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
 	ERROR4_STR    DB 'Error writing in file.$'
   ERROR5_STR    DB 'Record not written properly.$'
 	
-	WORDS  DB 'file.txt', 00H
+	WORDS  DB 'words.txt', 00H
 	HIGHSCORETXT  DB 'high.txt', 00H
+	;HIGHSCORETXT2  DB 'high2.txt', 00H
   FILEHANDLE    DW ?
 
 	STACK_INPUT		DB 32 DUP('$') 
-	RECORD_STR    DB 1001 DUP('$')  ;length = original length of record + 1 (for $)
+	RECORD_STR    DB 2001 DUP('$')  ;length = original length of record + 1 (for $)
   TOBESOLVED    DB 32 DUP(' ')  ;length = original length of record + 1 (for $)
 	HIGH_STR    DB 32 DUP('$')    ;
 	;HIGH_STR  DW 10
@@ -66,11 +90,18 @@ TITLE HANGMAN (SIMPLFIED .EXE FORMAT)
   ;      DW 0
 	;			DW 10 DUP(0)
 	HIGHSCORE DW 100 DUP ('$')
-	MODE DB 2 ;-------NORMAL OR EXTREME MODE-------;
+	MODE DB 1 ;-------NORMAL OR EXTREME MODE-------;
 	LOSE DW ? ;--------IF DEDZ NA BA-----------;
 	TEN DW ?
 	TOT DW ? ;**********TOTAL HIGH***************;
 	COUNTER DW ? ;**********TOTAL CURRENT***************;
+	ARROW DB 175, '$'
+  ARROW_ROW DB 16
+  ARROW_COL DB 01EH 
+  SPACE DB " $"
+  FLAG DB 0 
+	NEW_INPUT   DB    ?
+	
 	
 	
   
@@ -106,11 +137,30 @@ ENDM
 MAIN PROC FAR
   MOV AX, @data
   MOV DS, AX
+	
+	LEA DX,HOWTO_FILE
+	CALL OPEN
+	LEA DX,HOWTO_STR
+	CALL READ
+	CALL FILECLOSE
+	
+	LEA DX,GAMEOVER_FILE
+	CALL OPEN
+	LEA DX,GAMEOVER_STR
+	CALL READ
+	CALL FILECLOSE
+	
+	CALL DISPLAY_HOME_SCREEN
+	CALL MAINGAME
+
+EXIT:
+  MOV AH, 4CH
+  INT 21H
+MAIN ENDP
+
+MAINGAME PROC
 	XOR BP,BP
-	
 	MOV SCORE,0
-	
-  ;MAINGAME:
 ;*************************************************************************
 ;  FILE READING
 ;*************************************************************************
@@ -148,7 +198,7 @@ MAIN PROC FAR
 	CALL GETLINE ; gets 1 line form file
 	
 	CMP LOSE,1
-	JE EXIT
+	JE OVER
 	CALL TABLE
 	CALL matchWord
 	
@@ -159,6 +209,7 @@ MAIN PROC FAR
 	JNE PLAY
 	
 	CALL FILECLOSE
+	JMP OVER
 	
   JMP EXIT
 
@@ -180,11 +231,25 @@ DISPLAY_ERROR3:
   LEA DX, ERROR3_STR
   MOV AH, 09
   INT 21H
+	
+	JMP EXIT
+	
+RET
+MAINGAME ENDP
 
-EXIT:
-  MOV AH, 4CH
-  INT 21H
-MAIN ENDP
+OVER:
+CALL _CLEAR_SCREEN
+CALL DISPGAMEOVER
+OVER2:
+		MOV NEW_INPUT,0
+		CALL GET_INPUT
+		CMP NEW_INPUT,1CH
+		JNE OVER2
+		CALL DISPLAY_HOME_SCREEN
+
+;*************************************************************************
+;  FILECLOSE DISPLAY
+;*************************************************************************
 
 FILECLOSE PROC
 	 MOV AH, 3EH           ;request close file
@@ -192,7 +257,6 @@ FILECLOSE PROC
   INT 21H
 	RET
 FILECLOSE ENDP
-	
 
 ;*************************************************************************
 ;  OPEN procedure
@@ -211,7 +275,6 @@ OPEN ENDP
 ;*************************************************************************
 ;  READ procedure
 ;*************************************************************************
-
 READ PROC
 	MOV AH, 3FH           
 	MOV BX, FILEHANDLE    
@@ -224,6 +287,304 @@ READ PROC
 	RET
 
 READ ENDP
+
+EXITP	PROC
+	MOV AH, 4CH
+  INT 21H
+RET
+EXITP ENDP
+
+DISPOPT PROC
+		
+    ;set cursor
+    MOV		DL, 01
+    MOV		DH, 01
+    CALL	_SET_CURSOR  
+  
+    PRINTSTR MESSAGE
+
+;---------------------------------------------no. 1
+    MOV DL, 01FH
+    MOV DH, 16
+    CALL _SET_CURSOR
+
+    PRINTSTR OPT1
+    
+;---------------------------------------------no. 2    
+
+    MOV DL, 01FH
+    MOV DH, 17
+    CALL _SET_CURSOR
+		PRINTSTR OPT2
+ 
+;---------------------------------------------no. 3    
+
+    MOV DL, 01FH
+    MOV DH, 18
+    CALL _SET_CURSOR
+
+    PRINTSTR OPT3
+
+;---------------------------------------------no. 4
+
+    MOV DL, 01FH
+    MOV DH, 19
+    CALL _SET_CURSOR
+		PRINTSTR OPT4
+;---------------------------------------------main menu functions
+
+	 ARROW_POS:
+    MOV DH, ARROW_ROW
+    MOV DL, ARROW_COL
+    PUSH DX
+    CALL _SET_CURSOR2
+
+    DISPLAY_ARROW:
+    MOV AH, 09H
+    LEA DX, ARROW
+    INT 21H
+    CALL _CURSOR_REMOVE
+RET
+DISPOPT ENDP
+
+;*************************************************************************
+;  MENU DISPLAY
+;*************************************************************************
+DISPLAY_HOME_SCREEN PROC
+
+  MENUMAIN:
+    CALL _CLEAR_SCREEN
+		CALL DISPOPT
+		
+    CHOOSE:
+    MOV FLAG, 0   
+    MOV AH, 00H   
+    INT 16H
+    CMP AL, 0DH   
+    JNE SKIP_TO_LEFT
+    JMP CHOICE
+    SKIP_TO_LEFT:
+    CMP AH, 48H   
+    JE  UP
+    CMP AH, 50H 
+    JE  DOWN
+
+    JMP CHOOSE
+		
+		HOW_TO2:
+		CALL GET_INPUT
+		CMP NEW_INPUT,1CH
+		JNE HOW_TO2
+		JE MENUMAIN
+		
+    UP:
+    CMP ARROW_ROW, 16   
+    JNE  SET_DELETE_POS
+
+    SET_TUMOY_UP:
+    MOV FLAG, 1
+
+    SET_DELETE_POS:
+    MOV DH, ARROW_ROW
+    MOV DL, ARROW_COL
+    PUSH DX
+    CALL _SET_CURSOR2
+
+    DELETE_ARROW:
+    MOV AH, 09H
+    LEA DX, SPACE
+    INT 21H
+    CALL _CURSOR_REMOVE
+
+    SET_ARROW_POS:
+    CMP FLAG, 1
+    JNE CONT
+    ADD ARROW_ROW, 4
+    CONT:
+    SUB ARROW_ROW, 1
+    MOV DH, ARROW_ROW
+    MOV DL, ARROW_COL
+    PUSH DX
+    CALL _SET_CURSOR2
+
+    DISPLAY_ARROW2:
+    MOV AH, 09H
+    LEA DX, ARROW
+    INT 21H
+    CALL _CURSOR_REMOVE
+    JMP CHOOSE
+		
+		HOW_TO:
+		CALL _CLEAR_SCREEN
+		MOV NEW_INPUT,0
+    CALL DISPHOWTO
+		JMP HOW_TO2
+
+    DOWN:
+    CMP ARROW_ROW, 19 
+    JNE SET_DELETE_POS2
+
+    SET_TUMOY_DOWN:
+    MOV FLAG, 1
+
+    SET_DELETE_POS2:
+    MOV DH, ARROW_ROW
+    MOV DL, ARROW_COL
+    PUSH DX
+    CALL _SET_CURSOR2
+
+    DELETE_ARROW2:
+    MOV AH, 09H
+    LEA DX, SPACE
+    INT 21H
+    CALL _CURSOR_REMOVE
+
+    SET_ARROW_POS2:
+    CMP FLAG, 1
+    JNE CONT2
+    SUB ARROW_ROW, 4
+    CONT2:
+    ADD ARROW_ROW, 1
+    MOV DH, ARROW_ROW
+    MOV DL, ARROW_COL
+    PUSH DX
+    CALL _SET_CURSOR2
+
+    DISPLAY_ARROW3:
+    MOV AH, 09H
+    LEA DX, ARROW
+    INT 21H
+    CALL _CURSOR_REMOVE
+    JMP CHOOSE
+		
+		CHOICE:   
+    CMP ARROW_ROW, 16
+    JE PLAY_GAME1
+    CMP ARROW_ROW, 17
+    JE PLAY_GAME2
+    CMP ARROW_ROW, 18
+    JE HOW_TO
+    CMP ARROW_ROW, 19
+    JE	TERMINATE
+    JMP CHOOSE
+
+    RET
+DISPLAY_HOME_SCREEN ENDP
+
+
+
+TERMINATE:
+CALL EXITP
+
+PLAY_GAME1:
+MOV MODE,1
+CALL _CLEAR_SCREEN
+CALL MAINGAME
+;JMP GAMEOVER
+
+PLAY_GAME2:
+MOV MODE,2
+CALL _CLEAR_SCREEN
+CALL MAINGAME
+;JMP GAMEOVER
+
+DISPHOWTO PROC
+	PRINTSTR HOWTO_STR
+
+		ENDDISP:
+		RET
+DISPHOWTO ENDP
+
+DISPGAMEOVER PROC
+	PRINTSTR GAMEOVER_STR
+	MOV DH, 16
+	MOV DL, 01BH
+	PUSH DX
+	CALL _SET_CURSOR2
+	; CURRENT SCORE
+	
+	MOV AH, 09H
+	LEA DX, HIGHSCORE 			;change to score
+	INT 21H
+	CALL _CURSOR_REMOVE
+	
+	MOV DH, 16	
+	MOV DL, 03FH
+	PUSH DX
+	CALL _SET_CURSOR2
+
+	MOV AH, 09H
+	LEA DX, HIGH_STR 			;change to score
+	INT 21H
+	CALL _CURSOR_REMOVE
+			;PRINTSTR HOWTO_STR
+			;CALL GET_INPUT
+			
+		
+		RET
+DISPGAMEOVER ENDP
+
+;-------------------------------------------
+
+
+    _CLEAR_SCREEN PROC	NEAR
+        MOV		AX, 0600H  ;fullscreen
+        MOV		BH, 00FH   ;black bg white fg
+        MOV 	CX, 0000H 
+        MOV		DX, 184FH
+        INT		10H
+        RET
+    _CLEAR_SCREEN ENDP
+;-------------------------------------------
+    _SET_CURSOR PROC	NEAR
+        MOV		AH, 02H
+        MOV		BH, 00
+        INT		10H
+        RET
+    _SET_CURSOR ENDP
+;-------------------------------------------
+
+    _SET_CURSOR2 PROC NEAR
+      POP BX
+      POP DX
+      PUSH BX
+      MOV AH, 02H   
+      MOV BH, 00    
+      INT 10H
+
+      RET
+    _SET_CURSOR2 ENDP
+
+;-------------------------------------------
+
+    _CURSOR_REMOVE PROC NEAR
+      MOV AH, 02H   
+      MOV BH, 00    
+      MOV DH, 25   
+      MOV DL, 80 
+      INT 10H
+
+      RET
+    _CURSOR_REMOVE ENDP
+
+;-------------------------------------------
+
+GET_INPUT PROC NEAR 
+	  MOV   AH, 01H   ;check for input
+      INT   16H
+
+      JZ    BACKTOGAME
+	  
+      MOV   AH, 00H   
+      INT   16H
+	  
+	  MOV NEW_INPUT, AH
+	  
+    RETURN:
+       RET
+	BACKTOGAME:
+		RET
+GET_INPUT  ENDP
 
 ;*************************************************************************
 ;  GETCOUNT procedure
@@ -420,7 +781,7 @@ MOV CREDIT,0		;initialize Credit
 MOV  correct,0		;initialize values of correct & incorrect
 MOV  incorrect,0
 MOV CX,7
-JMP CONT
+JMP CONTI
 ;RET
 ;***************************************************************************
 ;	matchWord Procedure
@@ -428,7 +789,7 @@ JMP CONT
 matchWord PROC
 	CMP MODE,2  ;**********comparison if extreme mode is selected or not**************;
 	JNE RESETINC
-	CONT:
+	CONTI:
 
 INPUT:	;*********************** user input loop ***************************
 	CMP CX,0
@@ -445,6 +806,8 @@ OTHER_INPUT:
 	;PRINTSTR HIGHSCORE
 	PRINTSTR CURRENTSCORE
 	PRINTSTR RES  ;-----CONVERTED SCORE TO DEC----------;
+	MOV AX,RES
+	MOV HIGHSCORE,AX
 	PRINTSTR CRLF
 	PRINTSTR PROMPT3  ;--------USER INPUT PROMPT---------;
 	MOV AH,1
@@ -508,7 +871,7 @@ WINCASE:
 	JMP RESULT
 LOOSE:
 	MOV LOSE,1
-	PRINTSTR PROMPT6	
+	;PRINTSTR PROMPT6	
 RESULT:
 	;-------CHECK IF CURRENT SCORE GREATER THAN HISCORE--------------;
 	CALL GETSIZE ;GETSIZE OF CURRENT HIGH SCORE (FILE WRITE PURPOSES)
